@@ -1,0 +1,25 @@
+#!/bin/bash
+set -e
+
+# verbose
+# set -x
+
+TARGET_HOST="$1"
+CERTS_DIR_NAME="$2"
+CERTS_DIR="/opt/le-install/certs/${CERTS_DIR_NAME}"
+
+SSH_CMD=()
+SSH_PORT="$(echo -n "${TARGET_HOST}" | cut -d':' -f2)"
+if [[ -n "$SSH_PORT" ]]; then
+    SSH_CMD+=("-p" "${SSH_PORT}")
+    TARGET_HOST="$(echo -n "${TARGET_HOST}" | cut -d':' -f1)"
+fi
+
+rsync -r "${CERTS_DIR}/." \
+    -e "ssh $(printf " %s" "${SSH_CMD[@]}")" \
+    "${TARGET_HOST}:/etc/nginx/certs.d/."
+
+ssh "${SSH_CMD[@]}" "${TARGET_HOST}" /bin/sh <<'EOF'
+command nginx -t && \
+    command nginx -s reload
+EOF
